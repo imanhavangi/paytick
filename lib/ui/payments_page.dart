@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controller/payment_controller.dart';
 import '../model/payment.dart';
+import '../model/payment_category.dart';
 import '../utils/date_utils.dart';
 import 'add_payment_page.dart';
 
-class PaymentsPage extends StatelessWidget {
-  const PaymentsPage({super.key});
+class PaymentsListPage extends StatelessWidget {
+  const PaymentsListPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -32,22 +33,23 @@ class PaymentsPage extends StatelessWidget {
               ),
             ),
             child: Obx(() => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Total due this month:',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  controller.totalDueThisMonth.toStringAsFixed(2),
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ),
-              ],
-            )),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total due this month:',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      controller.totalDueThisMonth.toStringAsFixed(2),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                    ),
+                  ],
+                )),
           ),
           // Payments list
           Expanded(
@@ -88,7 +90,10 @@ class PaymentsPage extends StatelessWidget {
                   return PaymentListItem(
                     payment: payment,
                     onTogglePaid: () => controller.togglePaid(payment),
-                    onDelete: () => _showDeleteDialog(context, payment, controller),
+                    onEdit: () =>
+                        Get.to(() => AddPaymentPage(editPayment: payment)),
+                    onDelete: () =>
+                        _showDeleteDialog(context, payment, controller),
                   );
                 },
               );
@@ -103,12 +108,14 @@ class PaymentsPage extends StatelessWidget {
     );
   }
 
-  void _showDeleteDialog(BuildContext context, Payment payment, PaymentController controller) {
+  void _showDeleteDialog(
+      BuildContext context, Payment payment, PaymentController controller) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Payment'),
-        content: Text('Are you sure you want to delete the payment for ${payment.clientName}?'),
+        content: Text(
+            'Are you sure you want to delete the payment for ${payment.clientName}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -118,8 +125,13 @@ class PaymentsPage extends StatelessWidget {
             onPressed: () {
               controller.deletePayment(payment);
               Navigator.of(context).pop();
+              Get.snackbar(
+                'Success',
+                'Payment deleted successfully',
+                snackPosition: SnackPosition.BOTTOM,
+              );
             },
-            child: const Text('Delete'),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -130,12 +142,14 @@ class PaymentsPage extends StatelessWidget {
 class PaymentListItem extends StatelessWidget {
   final Payment payment;
   final VoidCallback onTogglePaid;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const PaymentListItem({
     super.key,
     required this.payment,
     required this.onTogglePaid,
+    required this.onEdit,
     required this.onDelete,
   });
 
@@ -154,23 +168,24 @@ class PaymentListItem extends StatelessWidget {
       cardColor = Colors.yellow.withValues(alpha: 0.1);
     }
 
-    return GestureDetector(
-      onLongPress: onDelete,
-      child: Card(
-        color: cardColor,
-        margin: const EdgeInsets.only(bottom: 8),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Checkbox
-              Checkbox(
-                value: false, // Always false since marking as paid moves the date forward
-                onChanged: (_) => onTogglePaid,
-              ),
-              const SizedBox(width: 12),
-              // Payment details
-              Expanded(
+    return Card(
+      color: cardColor,
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // Checkbox
+            Checkbox(
+              value:
+                  false, // Always false since marking as paid moves the date forward
+              onChanged: (_) => onTogglePaid(),
+            ),
+            const SizedBox(width: 12),
+            // Payment details
+            Expanded(
+              child: GestureDetector(
+                onTap: onEdit,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -201,17 +216,52 @@ class PaymentListItem extends StatelessWidget {
                   ],
                 ),
               ),
-                             // Status indicator
-               if (isPaymentOverdue)
-                 const Icon(Icons.warning, color: Colors.red, size: 20)
-               else if (isPaymentDueToday)
-                 const Icon(Icons.today, color: Colors.orange, size: 20)
-               else if (isPaymentDueTomorrow)
-                 const Icon(Icons.schedule, color: Colors.yellow, size: 20),
-            ],
-          ),
+            ),
+            // Action buttons
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                switch (value) {
+                  case 'edit':
+                    onEdit();
+                    break;
+                  case 'delete':
+                    onDelete();
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 20),
+                      SizedBox(width: 8),
+                      Text('Edit'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 20, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Delete', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            // Status indicator
+            if (isPaymentOverdue)
+              const Icon(Icons.warning, color: Colors.red, size: 20)
+            else if (isPaymentDueToday)
+              const Icon(Icons.today, color: Colors.orange, size: 20)
+            else if (isPaymentDueTomorrow)
+              const Icon(Icons.schedule, color: Colors.yellow, size: 20),
+          ],
         ),
       ),
     );
   }
-} 
+}

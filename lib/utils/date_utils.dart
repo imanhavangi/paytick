@@ -38,4 +38,9 @@ bool isDueToday(DateTime date) {
 bool isDueTomorrow(DateTime date) {
   final tomorrow = DateTime.now().add(const Duration(days: 1));
   return isSameDay(date, tomorrow);
-} 
+}
+
+/// Format date to month and year (MMMM yyyy)
+String formatMonthYear(DateTime date) {
+  return DateFormat('MMMM yyyy').format(date);
+}

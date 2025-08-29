@@ -22,13 +22,14 @@ class PaymentAdapter extends TypeAdapter<Payment> {
       amount: fields[2] as double,
       frequency: fields[3] as PaymentFrequency,
       nextDue: fields[4] as DateTime,
-    );
+      description: fields[6] as String?,
+    ).._category = fields[5] as PaymentCategory?;
   }
 
   @override
   void write(BinaryWriter writer, Payment obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -38,7 +39,11 @@ class PaymentAdapter extends TypeAdapter<Payment> {
       ..writeByte(3)
       ..write(obj.frequency)
       ..writeByte(4)
-      ..write(obj.nextDue);
+      ..write(obj.nextDue)
+      ..writeByte(5)
+      ..write(obj._category)
+      ..writeByte(6)
+      ..write(obj.description);
   }
 
   @override
@@ -63,6 +68,12 @@ class PaymentFrequencyAdapter extends TypeAdapter<PaymentFrequency> {
         return PaymentFrequency.monthly;
       case 1:
         return PaymentFrequency.weekly;
+      case 2:
+        return PaymentFrequency.biweekly;
+      case 3:
+        return PaymentFrequency.quarterly;
+      case 4:
+        return PaymentFrequency.yearly;
       default:
         return PaymentFrequency.monthly;
     }
@@ -76,6 +87,15 @@ class PaymentFrequencyAdapter extends TypeAdapter<PaymentFrequency> {
         break;
       case PaymentFrequency.weekly:
         writer.writeByte(1);
+        break;
+      case PaymentFrequency.biweekly:
+        writer.writeByte(2);
+        break;
+      case PaymentFrequency.quarterly:
+        writer.writeByte(3);
+        break;
+      case PaymentFrequency.yearly:
+        writer.writeByte(4);
         break;
     }
   }
